@@ -1,0 +1,176 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import accuracy_score, confusion_matrix,classification_report
+from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import precision_recall_curve
+from sklearn.model_selection import learning_curve
+from sklearn.metrics import brier_score_loss
+from sklearn.calibration import calibration_curve
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+import seaborn as sns
+import matplotlib.pyplot as plt 
+
+
+df = pd.read_csv('downloads/kaggle/Bank_Transaction_Fraud_Detection.csv')
+df.head()
+df.groupby(['Transaction_Location']).count()
+columns = ['Customer_ID', 'Customer_Name', 'Gender', 'Age', 'State', 'City',
+       'Bank_Branch', 'Account_Type', 'Transaction_ID', 'Transaction_Date',
+       'Transaction_Time', 'Transaction_Amount', 'Merchant_ID',
+       'Transaction_Type', 'Merchant_Category', 'Account_Balance',
+       'Transaction_Device', 'Transaction_Location', 'Device_Type', 'Is_Fraud',
+       'Transaction_Currency', 'Customer_Contact', 'Transaction_Description',
+       'Customer_Email']
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set(rc={'figure.figsize': (14, 5)})
+sns.heatmap(df.select_dtypes(include='number').corr(),
+            cmap=sns.cubehelix_palette(20, light=0.95, dark=0.15))
+df1 = df.drop(['Customer_ID', 'Customer_Name','State', 'City','Transaction_ID','Transaction_Date',
+       'Transaction_Time','Merchant_ID','Merchant_ID', 'Customer_Contact', 'Transaction_Description',
+       'Customer_Email'], axis=1)
+df1.shape
+df1.dtypes
+def get_numeric_columns(df):
+
+  return df.select_dtypes(include=np.number).columns.tolist()
+numeric_cols = get_numeric_columns(df1)
+numeric_cols
+def get_categorical_columns(df):
+    return df.select_dtypes(include=['object', 'category']).columns.tolist()
+categorical_columns = get_categorical_columns(df1)
+categorical_columns
+from sklearn import preprocessing
+
+le = preprocessing.LabelEncoder()
+for col in categorical_columns:
+    df1[col] = le.fit_transform(df1[col])
+
+numeric_columns = ['Age', 'Transaction_Amount', 'Account_Balance']
+df.columns
+
+df1.dtypes
+df1.columns
+
+sns.set(rc={'figure.figsize': (14, 5)})
+sns.heatmap(df1.select_dtypes(include='number').corr(),
+            cmap=sns.cubehelix_palette(20, light=0.95, dark=0.15))
+X = df1[['Gender', 'Age', 'Bank_Branch', 'Account_Type', 'Transaction_Amount',
+       'Transaction_Type', 'Merchant_Category', 'Account_Balance',
+       'Transaction_Device', 'Transaction_Location', 'Device_Type',
+       'Transaction_Currency']]
+y = df1['Is_Fraud']
+
+# def train_test_split(X,y):
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2, random_state=0)
+#    return X_train, X_test, y_train, y_test
+
+scaler = StandardScaler()
+scaler.fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test)
+
+def models(X_train, y_train):
+    clf = GaussianNB()
+    clf.fit(X_train, y_train)
+    # y_pred = clf.predict(X_test)
+    return clf
+
+clf = models(X_train, y_train)
+
+# def predcit(clf, X_test):
+y_pred = clf.predict(X_test)
+#    return y_pred
+y_prob = clf.predict_proba(X_test)[:, 1]
+def cal_accuracy(y_test, y_pred):
+
+    print("Accuracy : ",
+          accuracy_score(y_test, y_pred)*100)
+    print("Report : ",
+          classification_report(y_test, y_pred))
+
+cal_accuracy(y_test, y_pred)          
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
+
+# Area Under Curve and ROC Curve
+
+fpr, tpr, thresholds = roc_curve(y_test, y_prob)
+
+# Calculate the AUC score
+roc_auc = roc_auc_score(y_test, y_prob)
+
+# Plot the ROC curve
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, color='blue', lw=2, label='ROC curve (AUC = %0.2f)' % roc_auc)
+plt.plot([0, 1], [0, 1], color='red', linestyle='--', label='Random classifier')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC)')
+plt.legend(loc="lower right")
+plt.show()
+
+# Precision Recall Curve
+
+precision, recall, thresholds = precision_recall_curve(y_test, y_prob)
+plt.plot(recall, precision, color='blue', label='PR curve')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Precision-Recall Curve')
+plt.legend()
+plt.show()
+
+ # Learning Curve
+sizes, training_scores, testing_scores = learning_curve(RandomForestClassifier(), X, y, cv=10, scoring='accuracy', train_sizes=np.linspace(0.01, 1.0, 50)) 
+  
+# Mean and Standard Deviation of training scores 
+mean_training = np.mean(training_scores, axis=1) 
+Standard_Deviation_training = np.std(training_scores, axis=1) 
+  
+# Mean and Standard Deviation of testing scores 
+mean_testing = np.mean(testing_scores, axis=1) 
+Standard_Deviation_testing = np.std(testing_scores, axis=1) 
+  
+# dotted blue line is for training scores and green line is for cross-validation score 
+plt.plot(sizes, mean_training, '--', color="b",  label="Training score") 
+plt.plot(sizes, mean_testing, color="g", label="Cross-validation score") 
+  
+# Drawing plot 
+plt.title("LEARNING CURVE FOR RANDOM FOREST CLASSIFIER") 
+plt.xlabel("Training Set Size"), plt.ylabel("Accuracy Score"), plt.legend(loc="best") 
+plt.tight_layout() 
+plt.show()
+
+# Probability Calibration Curve
+
+estimator = RandomForestClassifier()
+train_sizes, train_scores, test_scores = learning_curve(
+    estimator, X_train, y_train, cv=5, train_sizes=[0.1, 0.3, 0.5, 0.7, 0.9]
+)
+
+b_score = brier_score_loss(y_test, y_prob)
+print("Brier Score :",b_score)
+# Generate calibration curve data
+prob_true, prob_pred = calibration_curve(y_test, y_prob, n_bins=10)
+
+
+# Plot calibration curve (Conceptual)
+plt.plot(prob_pred, prob_true, marker='.', label='Random Forest Classifier')
+plt.plot([0, 1], [0, 1], linestyle='--', label='Perfectly Calibrated')
+plt.xlabel('Predicted Probability')
+plt.ylabel('Fraction of Positives')
+plt.title('Calibration Curve')
+plt.show()
